@@ -1,0 +1,56 @@
+Repository Management Requirement Document
+1. Purpose & Scope:
+To build a centralized repository management system on Google Drive for systematic upload, organization, and search of digital assets (images, videos, PDFs, etc.).
+This will focus on managing current and ongoing monthly additions of approximately 
+300 asset units per month.
+The assets will include Statics, Carousels, Videos, and Emailers.
+2. Key Features
+2.1 Google Drive Integration
+We will leverage Google Drive for this system, ensuring secure access via authorized login.
+Automated or Manual Bulk Upload: We need the ability to fetch and bulk upload assets, ideally from the last 2 months automatically, or manually if needed.
+Supported File Types: The system must support various file types including .jpg, .png, .pdf, .mp4, .docx, etc..
+Hierarchical Folder Structure: Assets will be automatically sorted and segregated into a clear, hierarchical folder structure within Google Drive. The structure will be:
+/Assets/Brand/ (for cross-resort assets), /Assets/Tactical/
+Within "Brand" and "Tactical," further sub-folders will be created based on:
+State/
+Region/
+Resort/
+Year/ (Example: /Assets/2025/May/) 
+Month/ (Example: /Assets/2025/June/) 
+Asset Type/ (e.g., Static, Carousel, Video, Emailer)
+2.2 Excel Master Tracker & Metadata:
+A comprehensive Excel master tracker will be maintained, serving as the central record for all assets. This tracker will include the following agreed-upon parameters (aligned with the Sterling team), which will also serve as asset metadata:
+Brand/Tactical
+Region
+State
+Resort
+Year
+Month
+Asset Type
+Upload Date 
+Unique File Name (as per naming convention below)
+Link to Open File (on Google Drive)
+Link to Versions Folder (on Google Drive)
+Tags/Keywords (manual tagging or using AI-based image/text recognition for search optimization)
+2.3 Unique File Naming Convention & Version Control:
+Every asset must be assigned a unique name that corresponds to its categorization. The standard format will be:
+Year_Month_Region_Resort_AssetType_V[VersionNumber]
+Example: 2025_Nov_South_Alleppey_Static_V1
+If a specific resort is not applicable (e.g., for a general brand campaign), the "Resort" field can be replaced with "Brand" or omitted as appropriate.
+For each asset, there will be an "open file" (the current, approved version).
+All previous versions of an asset must be maintained within a dedicated "Versions" sub-folder, clearly linked from the master tracker.
+2.4 Search, Filtering & Display:
+The system should facilitate efficient search and retrieval.
+Search Capabilities: Date-wise search (filter by specific day/week/month/year).
+Type-based search (e.g., 'PDFs uploaded in June', 'all images from last week').
+Tag/Keyword search across asset metadata (filename, type, custom tags).
+
+2.5 Monthly Asset Sync
+- Option to set recurring sync or manual trigger.
+2.6 Ease of Use & UX
+  - Clean, intuitive UI with:
+  - Drag-and-drop upload - To be discussed.
+  - Easy previews.
+  - Date and type filters in the sidebar.
+  - Admin panel for users to tag, rename, or delete assets.
+
