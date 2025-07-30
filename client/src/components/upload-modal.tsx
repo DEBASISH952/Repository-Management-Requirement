@@ -1,11 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CloudUpload, X, Upload } from "lucide-react";
-import { useDropzone } from "react-dropzone";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -29,13 +28,25 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     resort: "",
     tags: ""
   });
+  const [isDragActive, setIsDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const uploadMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      const response = await apiRequest("POST", "/api/assets/upload", data);
+      const response = await fetch("/api/assets/upload", {
+        method: "POST",
+        body: data,
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${errorText}`);
+      }
+      
       return response.json();
     },
     onSuccess: () => {
@@ -56,8 +67,8 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     }
   });
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles = acceptedFiles.map(file => {
+  const handleFileSelect = useCallback((selectedFiles: File[]) => {
+    const newFiles = selectedFiles.map(file => {
       const fileWithPreview = Object.assign(file, {
         preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
       });
@@ -66,16 +77,30 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     setFiles(prev => [...prev, ...newFiles]);
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.jpeg', '.jpg', '.png'],
-      'video/*': ['.mp4'],
-      'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-    },
-    maxSize: 50 * 1024 * 1024 // 50MB
-  });
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragActive(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragActive(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragActive(false);
+    
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    handleFileSelect(droppedFiles);
+  }, [handleFileSelect]);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      handleFileSelect(selectedFiles);
+    }
+  }, [handleFileSelect]);
 
   const removeFile = (index: number) => {
     setFiles(prev => {
@@ -115,6 +140,9 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
       uploadData.append(key, value);
     });
 
+    console.log('Uploading files:', files.length);
+    console.log('Form data:', formData);
+
     uploadMutation.mutate(uploadData);
   };
 
@@ -141,18 +169,28 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
         <div className="space-y-6">
           {/* Upload Zone */}
           <div
-            {...getRootProps()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
             className={`upload-zone p-8 text-center rounded-xl cursor-pointer border-2 border-dashed transition-all ${
               isDragActive ? 'border-primary bg-blue-50' : 'border-gray-300'
             }`}
           >
-            <input {...getInputProps()} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".jpeg,.jpg,.png,.pdf,.mp4,.docx"
+              onChange={handleFileInputChange}
+              className="hidden"
+            />
             <CloudUpload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               {isDragActive ? "Drop files here" : "Drag and drop files here"}
             </h3>
             <p className="text-gray-500 mb-4">or click to browse files</p>
-            <Button variant="outline">Browse Files</Button>
+            <Button variant="outline" type="button">Browse Files</Button>
             <p className="text-xs text-gray-400 mt-3">
               Supported formats: JPG, PNG, PDF, MP4, DOCX (Max size: 50MB)
             </p>

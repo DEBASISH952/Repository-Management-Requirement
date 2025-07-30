@@ -85,8 +85,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Upload assets
   app.post("/api/assets/upload", upload.array('files'), async (req, res) => {
     try {
+      console.log('Upload request received');
+      console.log('Request files:', req.files);
+      console.log('Request body:', req.body);
+      
       const files = req.files as any[];
       if (!files || files.length === 0) {
+        console.log('No files found in request');
         return res.status(400).json({ message: "No files uploaded" });
       }
 
