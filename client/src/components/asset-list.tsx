@@ -39,7 +39,12 @@ export function AssetList({
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (input: any) => {
+    
+      if (!input) return "Invalid date";
+    const date = new Date(input);
+    if (isNaN(date.getTime())) return "Invalid date";
+
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
