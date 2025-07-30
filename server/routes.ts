@@ -118,10 +118,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       // Get all assets
-      const { assets } = await storage.getAssets({});
+      const assets = await storage.getAssets({});
 
       // Add data rows
-      assets.forEach(asset => {
+      if (assets && Array.isArray(assets)) {
+        assets.forEach(asset => {
         worksheet.addRow({
           id: asset.id,
           filename: asset.filename,
@@ -141,7 +142,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isFavorite: asset.isFavorite ? 'Yes' : 'No',
           driveLink: asset.driveLink || ''
         });
-      });
+        });
+      }
 
       // Style the header row
       worksheet.getRow(1).font = { bold: true };

@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
 import { AssetGrid } from "@/components/asset-grid";
+import { AssetList } from "@/components/asset-list";
 import { UploadModal } from "@/components/upload-modal";
 import { AssetPreviewModal } from "@/components/asset-preview-modal";
 import { Grid3X3, List, FileSpreadsheet, ListTodo } from "lucide-react";
@@ -28,6 +29,8 @@ export default function Dashboard() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -100,6 +103,65 @@ export default function Dashboard() {
 
   const handleToggleFavorite = (asset: Asset) => {
     toggleFavoriteMutation.mutate(asset.id);
+  };
+
+  const handleBulkAction = (action: string) => {
+    if (selectedAssets.length === 0) {
+      toast({
+        title: "No assets selected",
+        description: "Please select at least one asset to perform bulk actions."
+      });
+      return;
+    }
+
+    switch (action) {
+      case 'favorite':
+        // TODO: Implement bulk favorite
+        toast({
+          title: "Bulk favorite",
+          description: `Added ${selectedAssets.length} assets to favorites.`
+        });
+        break;
+      case 'download':
+        // TODO: Implement bulk download
+        toast({
+          title: "Bulk download",
+          description: `Downloading ${selectedAssets.length} assets.`
+        });
+        break;
+      case 'delete':
+        // TODO: Implement bulk delete
+        toast({
+          title: "Bulk delete",
+          description: "Bulk delete functionality coming soon.",
+          variant: "destructive"
+        });
+        break;
+      default:
+        toast({
+          title: "Feature coming soon",
+          description: "This bulk action will be available in a future update."
+        });
+    }
+    
+    setSelectedAssets([]);
+    setShowBulkActions(false);
+  };
+
+  const handleSelectAsset = (assetId: string) => {
+    setSelectedAssets(prev => 
+      prev.includes(assetId) 
+        ? prev.filter(id => id !== assetId)
+        : [...prev, assetId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedAssets.length === assets.length) {
+      setSelectedAssets([]);
+    } else {
+      setSelectedAssets(assets.map(asset => asset.id));
+    }
   };
 
   const handleExportExcel = async () => {
@@ -194,18 +256,50 @@ export default function Dashboard() {
                 </Select>
                 
                 {/* Bulk Actions */}
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    toast({
-                      title: "Feature coming soon",
-                      description: "Bulk actions will be available in a future update."
-                    });
-                  }}
-                >
-                  <ListTodo className="mr-2 h-4 w-4" />
-                  Bulk Actions
-                </Button>
+                <div className="relative">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowBulkActions(!showBulkActions)}
+                  >
+                    <ListTodo className="mr-2 h-4 w-4" />
+                    Bulk Actions {selectedAssets.length > 0 && `(${selectedAssets.length})`}
+                  </Button>
+                  
+                  {showBulkActions && (
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                      <div className="py-2">
+                        <button
+                          onClick={handleSelectAll}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          {selectedAssets.length === assets.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                        <hr className="my-1" />
+                        <button
+                          onClick={() => handleBulkAction('favorite')}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                          disabled={selectedAssets.length === 0}
+                        >
+                          Add to Favorites
+                        </button>
+                        <button
+                          onClick={() => handleBulkAction('download')}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                          disabled={selectedAssets.length === 0}
+                        >
+                          Download Selected
+                        </button>
+                        <button
+                          onClick={() => handleBulkAction('delete')}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
+                          disabled={selectedAssets.length === 0}
+                        >
+                          Delete Selected
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 {/* Export Button */}
                 <Button 
@@ -219,15 +313,25 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Assets Grid */}
+          {/* Assets Display */}
           <div className="p-6">
-            <AssetGrid
-              assets={assets}
-              onPreview={handlePreviewAsset}
-              onDownload={handleDownloadAsset}
-              onToggleFavorite={handleToggleFavorite}
-              isLoading={isLoading}
-            />
+            {viewMode === "grid" ? (
+              <AssetGrid
+                assets={assets}
+                onPreview={handlePreviewAsset}
+                onDownload={handleDownloadAsset}
+                onToggleFavorite={handleToggleFavorite}
+                isLoading={isLoading}
+              />
+            ) : (
+              <AssetList
+                assets={assets}
+                onPreview={handlePreviewAsset}
+                onDownload={handleDownloadAsset}
+                onToggleFavorite={handleToggleFavorite}
+                isLoading={isLoading}
+              />
+            )}
 
             {/* Pagination */}
             {totalCount > 0 && (
