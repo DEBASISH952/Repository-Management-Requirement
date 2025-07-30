@@ -161,9 +161,10 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="upload-description">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">Upload Assets</DialogTitle>
+          <p id="upload-description" className="sr-only">Upload digital assets with metadata including category, asset type, region, and state information</p>
         </DialogHeader>
 
         <div className="space-y-6">

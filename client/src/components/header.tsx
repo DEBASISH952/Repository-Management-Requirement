@@ -1,7 +1,8 @@
 import { Input } from "@/components/ui/input";
-import { Bell, Search, Database } from "lucide-react";
+import { Bell, Search, Database, Download } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface HeaderProps {
   searchQuery: string;
@@ -9,6 +10,47 @@ interface HeaderProps {
 }
 
 export function Header({ searchQuery, onSearchChange }: HeaderProps) {
+  const { toast } = useToast();
+
+  const handleExportToExcel = async () => {
+    try {
+      const response = await fetch('/api/assets/export/excel', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      // Create blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `assets-export-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+
+      toast({
+        title: "Export successful",
+        description: "Assets exported to Excel file"
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: "Could not export assets to Excel",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="flex items-center justify-between px-6 py-4">
@@ -30,6 +72,15 @@ export function Header({ searchQuery, onSearchChange }: HeaderProps) {
           </div>
           
           <div className="flex items-center space-x-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleExportToExcel}
+              className="flex items-center space-x-2"
+            >
+              <Download className="h-4 w-4" />
+              <span>Export Excel</span>
+            </Button>
             <Button variant="ghost" size="sm" className="p-2 text-gray-600 hover:text-gray-900 relative">
               <Bell className="h-5 w-5" />
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">

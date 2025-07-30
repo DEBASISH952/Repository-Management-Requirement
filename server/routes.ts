@@ -89,6 +89,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Export assets to Excel
+  app.get("/api/assets/export/excel", async (req, res) => {
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Assets');
+
+      // Define columns
+      worksheet.columns = [
+        { header: 'ID', key: 'id', width: 20 },
+        { header: 'Filename', key: 'filename', width: 30 },
+        { header: 'Original Name', key: 'originalName', width: 25 },
+        { header: 'Category', key: 'category', width: 15 },
+        { header: 'Asset Type', key: 'assetType', width: 15 },
+        { header: 'Region', key: 'region', width: 15 },
+        { header: 'State', key: 'state', width: 15 },
+        { header: 'Resort', key: 'resort', width: 20 },
+        { header: 'Year', key: 'year', width: 10 },
+        { header: 'Month', key: 'month', width: 10 },
+        { header: 'Version', key: 'version', width: 10 },
+        { header: 'File Size (bytes)', key: 'fileSize', width: 15 },
+        { header: 'MIME Type', key: 'mimeType', width: 20 },
+        { header: 'Upload Date', key: 'uploadDate', width: 20 },
+        { header: 'Tags', key: 'tags', width: 30 },
+        { header: 'Favorite', key: 'isFavorite', width: 10 },
+        { header: 'Drive Link', key: 'driveLink', width: 40 }
+      ];
+
+      // Get all assets
+      const { assets } = await storage.getAssets({});
+
+      // Add data rows
+      assets.forEach(asset => {
+        worksheet.addRow({
+          id: asset.id,
+          filename: asset.filename,
+          originalName: asset.originalName,
+          category: asset.category,
+          assetType: asset.assetType,
+          region: asset.region,
+          state: asset.state,
+          resort: asset.resort || '',
+          year: asset.year,
+          month: asset.month,
+          version: asset.version,
+          fileSize: asset.fileSize,
+          mimeType: asset.mimeType,
+          uploadDate: asset.uploadDate?.toISOString() || '',
+          tags: Array.isArray(asset.tags) ? asset.tags.join(', ') : '',
+          isFavorite: asset.isFavorite ? 'Yes' : 'No',
+          driveLink: asset.driveLink || ''
+        });
+      });
+
+      // Style the header row
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      // Set response headers
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="assets-export-${new Date().toISOString().split('T')[0]}.xlsx"`);
+
+      // Write to response
+      await workbook.xlsx.write(res);
+      res.end();
+
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      res.status(500).json({ message: "Failed to export to Excel" });
+    }
+  });
+
   // Upload assets
   app.post("/api/assets/upload", upload.array('files'), async (req, res) => {
     try {
