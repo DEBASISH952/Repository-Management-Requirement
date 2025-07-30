@@ -14,14 +14,21 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
-// Google Drive API setup
-const drive = google.drive({
-  version: 'v3',
-  auth: new google.auth.GoogleAuth({
-    keyFile: process.env.GOOGLE_CREDENTIALS_PATH,
-    scopes: ['https://www.googleapis.com/auth/drive.file']
-  })
-});
+// Google Drive API setup (optional if credentials are provided)
+let drive: any = null;
+try {
+  if (process.env.GOOGLE_CREDENTIALS_PATH) {
+    drive = google.drive({
+      version: 'v3',
+      auth: new google.auth.GoogleAuth({
+        keyFile: process.env.GOOGLE_CREDENTIALS_PATH,
+        scopes: ['https://www.googleapis.com/auth/drive.file']
+      })
+    });
+  }
+} catch (error) {
+  console.log('Google Drive credentials not configured, using local storage');
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -85,13 +92,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Upload assets
   app.post("/api/assets/upload", upload.array('files'), async (req, res) => {
     try {
-      console.log('Upload request received');
-      console.log('Request files:', req.files);
-      console.log('Request body:', req.body);
-      
       const files = req.files as any[];
       if (!files || files.length === 0) {
-        console.log('No files found in request');
         return res.status(400).json({ message: "No files uploaded" });
       }
 
@@ -108,29 +110,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const extension = path.extname(file.originalname);
         const fullFilename = `${filename}${extension}`;
 
-        // Create folder structure in Google Drive
-        const folderPath = `Assets/${category}/${region}/${state}/${resort || 'Brand'}/${year}/${month.toString().padStart(2, '0')}/${assetType}`;
-        const folderId = await createDriveFolder(folderPath);
+        let driveFileId = 'local';
+        let driveFolderId = 'local';
+        let driveLink = `/uploads/${file.filename}`;
+        let versionsLink = `/uploads/`;
+        let thumbnailUrl = null;
 
-        // Upload file to Google Drive
-        const fileMetadata = {
-          name: fullFilename,
-          parents: [folderId]
-        };
+        if (drive) {
+          try {
+            // Create folder structure in Google Drive
+            const folderPath = `Assets/${category}/${region}/${state}/${resort || 'Brand'}/${year}/${month.toString().padStart(2, '0')}/${assetType}`;
+            const folderId = await createDriveFolder(folderPath);
 
-        const media = {
-          mimeType: file.mimetype,
-          body: fs.createReadStream(file.path)
-        };
+            // Upload file to Google Drive
+            const fileMetadata = {
+              name: fullFilename,
+              parents: [folderId]
+            };
 
-        const driveResponse = await drive.files.create({
-          requestBody: fileMetadata,
-          media: media,
-          fields: 'id,webViewLink'
-        });
+            const media = {
+              mimeType: file.mimetype,
+              body: fs.createReadStream(file.path)
+            };
 
-        // Clean up local file
-        fs.unlinkSync(file.path);
+            const driveResponse = await drive.files.create({
+              requestBody: fileMetadata,
+              media: media,
+              fields: 'id,webViewLink'
+            });
+
+            driveFileId = driveResponse.data.id!;
+            driveFolderId = folderId;
+            driveLink = driveResponse.data.webViewLink!;
+            versionsLink = `https://drive.google.com/drive/folders/${folderId}`;
+            thumbnailUrl = file.mimetype.startsWith('image/') ? driveResponse.data.webViewLink! : null;
+
+            // Clean up local file
+            fs.unlinkSync(file.path);
+          } catch (error) {
+            console.log('Google Drive upload failed, keeping local file:', error.message);
+            // Keep the local file as fallback
+          }
+        } else {
+          // Keep local file and create a local URL
+          const localPath = path.join('uploads', file.filename);
+          if (file.mimetype.startsWith('image/')) {
+            thumbnailUrl = `/uploads/${file.filename}`;
+          }
+        }
 
         // Create asset record
         const assetData = {
@@ -146,11 +173,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           version,
           fileSize: file.size,
           mimeType: file.mimetype,
-          googleDriveFileId: driveResponse.data.id!,
-          googleDriveFolderId: folderId,
-          driveLink: driveResponse.data.webViewLink!,
-          versionsLink: `https://drive.google.com/drive/folders/${folderId}`,
-          thumbnailUrl: file.mimetype.startsWith('image/') ? driveResponse.data.webViewLink! : null,
+          googleDriveFileId: driveFileId,
+          googleDriveFolderId: driveFolderId,
+          driveLink: driveLink,
+          versionsLink: versionsLink,
+          thumbnailUrl: thumbnailUrl,
           tags: tags ? tags.split(',').map((tag: string) => tag.trim()) : []
         };
 
